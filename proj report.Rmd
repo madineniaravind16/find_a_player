@@ -1,0 +1,461 @@
+---
+title: "u3229387 RDA project"
+author: "Aravind Madineni"
+date: "09/05/2021"
+output: html_document
+---
+
+## Load required packages
+
+```{r packages}
+library(tidyverse) # include all required packages at the start
+library(broom)
+
+```
+
+
+## (a) Basket ball, one of the most popular sports in the world played between two teams of just five players on each rectangular court, is just played with a ball and a hoop where you score a point by shooting the ball through the hoop. The game is very fat st paced where each and every player needs to play their part in  defense and offence. In basketball the key metrics or key performance indicators arescoring the ball which is called as a goal or basket, control the ball, rebounds and free throws.There are five differnt positions to be considered for this sport, the positions being center, powerforward(PF), point gaurd(PG), shooting gaurd(SG),samll forward(SF). Height is the major requirement of the centre position where one tries to block the oppponents and also rebounds both offensive and defensive. Power forward also does all that are done by the centre except that PF takes longer shots than centre. Small Forward cover all the court scoring from long shots but also close ones. Point Gaurds are supposed to be the teams best dribbler and also passer and also should steal the ball. shooting gaurd(SG), as the name suggests is the best shooter in the team ,able to make long shots, good dribbler as well.
+
+##(b) The scenario is that being a data analyst of one of the baskeball teams called as chicago bulls which is competing in the NBA need to analyse the performance. In the recent NBA season the performance of the team was not up to the mark as it finshes fourth from the bottom where a budget of $118 million was given for the next season to produce better results. There are five data sets given which contain information about the players statistics, their salaries, different teams and their statistics and payroll where there is a need to develop a reproducible data analysis project on the basis of this data provided.
+
+##(c) The aim of the project is that to find five efficeint players from the given data within the budget along with the constraint not to use up all the money for player selection as there should be some money left for other purposes.
+
+##(d) The importance of the project is that it shows the way how any data must be used and analysed in a way where one would eventually achieve the end result, here being able to find out the 5 best players and there by justification of the project can be done where we are able to achieve the end result with the resources provided.
+
+
+
+## The data is read using the read.csv function for reading the two required files and initiall the structure 0f data is checked using str() function and missing values if any present are removed using na.omit() function where the whole rows of na's are removed.
+
+##Reading in the required files as a data frame  using the as.data.frame() function along with `read_csv()` function from the `readr` package. Only two data sets are used which are nba player statistics and salaries.There are various variables describing the diffrent aspects of players and the descriptions of the variables can be found from the link below.
+[https://uclearn.canberra.edu.au/courses/9531/pages/data-description-reproducible-data-analysis-project]
+
+```{r read_data, message=FALSE} 
+# read in the data
+# data dir should be in the working dir
+nba_play_st <-  as.data.frame(read.csv("2018-19_nba_player-statistics.csv"))
+nba_play_sal <- as.data.frame(read.csv("2018-19_nba_player-salaries.csv"))
+
+```
+
+
+## Checking the data
+
+##Check the structure of the data file using `str()`:
+
+```{r structure}
+str(nba_play_st)
+str(nba_play_sal)
+```
+
+
+##Check the first 6 rows of the data file using `head()`
+
+```{r head}
+knitr::kable(head(nba_play_sal))
+knitr::kable(head(nba_play_st))
+```
+
+##removing the missing values. 
+##the missing values are removed using the na.omit() function where all the rows having NA's are removed.
+
+```{r remove na}
+nba_play_st <-  na.omit(nba_play_st)
+nba_play_sal <- na.omit(nba_play_sal)
+
+```
+
+
+
+##(3) Exploratory analysis
+
+##a) checking for errors and missing values
+
+##Check for missing values using is.na() function
+
+```{r na}
+sum(is.na(nba_play_st)) # count the missing values
+sum(is.na(nba_play_sal))
+head(which(is.na(nba_play_st), arr.ind = TRUE)) # find where the missing values are (showing only first 6 rows)
+```
+
+
+## b) checking the distribution of variables using histograms
+
+```{r distribution}
+par(mfrow = c(3,3))
+ggplot(nba_play_st, aes(x= G))+geom_histogram(binwidth = 1)
+ggplot(nba_play_st, aes(x=PTS)) + geom_histogram(binwidth = 50)
+ggplot(nba_play_st, aes(x= BLK))+geom_histogram(binwidth = 7)
+ggplot(nba_play_st, aes(x= AST))+geom_histogram(binwidth = 50)
+ggplot(nba_play_st, aes(x= TRB))+geom_histogram(binwidth = 50)
+ggplot(nba_play_st, aes(x= FG))+geom_histogram(binwidth = 20)
+ggplot(nba_play_st, aes(x= TOV))+geom_histogram(binwidth = 10)
+
+```
+
+## By looking at the histograms of all the important variables it can be explicitly understood that most of the distributions are right skewed having a lomg right tail where the mean is present at the right of the peak. This is also called as positive skew distributions.
+
+#####data transformation
+# Finding  the efficency of players using the variables and rounding them to the two digits after decimals and this column is added to the dataset using mutate() function
+```{r}
+new_df <- nba_play_st %>%
+  filter(G >= mean(G)) %>%
+  mutate(play_eff = round((PTS + TRB + AST + STL + BLK - (FGA -FG)- 
+                             (FTA-FT)- TOV)/ G,digits= 2))
+```
+
+##adding salary col using inner join
+##inner_join() function is used to join two data sets through the common varaible that exists in two data sets
+```{r}
+new_df <- new_df %>% inner_join(nba_play_sal)
+
+
+```
+
+
+##changing the salary col into millions and removing the salary col for convenience and removing the salary column
+```{r}
+new_df <- new_df %>% 
+  mutate(sal_mil = round((salary/1e6),digits = 2))
+new_df <- new_df[,-31]
+
+```
+
+##removing duplicate players by sorting the players in descending order of matches played and selecting the top one from the sorted ones
+```{r}
+new_df <- new_df[order(new_df$player_name, new_df$G, decreasing=TRUE),]
+new_df <- new_df[!duplicated(new_df$player_name),]
+
+```
+
+## saving the file
+```{r}
+write.csv(new_df,"new_df_processed.csv")
+```
+
+
+##checking for relationships between variables, or differences between groups
+##Creating visualisations to determine how each individual explanatory variable (field goals,steals, assists etc) relates to the response variable (ef i.e, player effciency) and to Describe the strength and direction of each of these relationships.
+## relationship between ef and FG
+```{r}
+
+
+
+ggplot(data = new_df, aes(x = TRB, y = play_eff)) +
+  geom_point() +
+ geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_hline(yintercept = 20, colour = "black", linetype = "dashed")
+with(new_df, cor(x = TRB, y = play_eff))
+
+ggplot(data = new_df, aes(x = AST, y = play_eff)) +
+  geom_point() +
+ geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_hline(yintercept = 20, colour = "black", linetype = "dashed")
+with(new_df, cor(x = AST, y = play_eff))
+
+ggplot(data = new_df, aes(x = STL, y = play_eff)) +
+  geom_point() +
+ geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_hline(yintercept = 20, colour = "black", linetype = "dashed")
+with(new_df, cor(x = STL, y = play_eff))
+
+ggplot(data = new_df, aes(x = BLK, y = play_eff)) +
+  geom_point() +
+ geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_hline(yintercept = 20, colour = "black", linetype = "dashed")
+with(new_df, cor(x = BLK, y = play_eff))
+
+ggplot(data = new_df, aes(x = PF, y = play_eff)) +
+  geom_point() +
+ geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_hline(yintercept = 20, colour = "black", linetype = "dashed")
+with(new_df, cor(x = PF, y = play_eff))
+
+
+
+
+
+
+```
+
+
+##3 the variables Total rebounds(TRB) and player efficiency(play_eff) are in linear relationship and also the they are strongly correlated as seen from the correlation value. The varaibles assists and play_eff are not completely linear as only some points seems to be satisfying the linearity where as other points are scattered and the correlation value is good with 0.66 and same goes with steals and play_eff and the correaltion value is even less with the value of 0.62. The variables blocks and play_eff are not in linear relationship and correaltion is also not so good with value of 0.54. the relation between variables personal fouls and play_eff is a bit linear in some regions and scattered in some regions. the correaltion is better with value 0.6
+
+
+```{r}
+pairs(formula = ~ FG + TRB + AST + PTS + PF + BLK+ STL, data = new_df)
+
+```
+
+
+##3 justification for decisions made about data modelling
+## Before modeling the data the response variable players efficiency is created by using appropriate formula that includes the variables from the data set and
+
+
+##4. Data modelling and results
+#Multiple linear regression.
+
+```{r}
+fit <- lm(play_eff ~ TRB + AST + PF + BLK+ STL, data = new_df )
+tidy(fit, conf.int = TRUE)
+summary(fit)
+
+```
+
+##intercept coefficient = when all continuous explanatory variables are equal to 0. 
+## the estimated player efficiency is 2.74
+## slope coef for total rebounds = when TRB is increased by 1, play_eff increases by 0.02, when all other variables remain fixed
+## slope coef for assists = when AST increased by 1kg, play_eff increases by 0.02 ml/kg/min, when all other variables remain fixed
+## slope coef for personal fouls = when PF is increased by 1, play_eff decreases by 0.01 ml/kg/min, when all other variables remain fixed
+## slope coef for blocks = when BLK is increased by 1, play_eff increases by 0.118 ml/kg/min, when all other variables remain fixed
+##slope coef for steals = when STL is increased by 1, play_eff increases by 0.007 ml/kg/min, when all other variables remain fixed
+
+##. Independence.
+##Determine if our linear regression meets the assumption of independence of observations.
+```{r}
+car::durbinWatsonTest(fit)
+
+```
+##We can tell from our study design that we do not have independence of observations
+## as we are just analysing single participants and there are no repeated measures
+## nonetheless, we can also test that our residuals are not autocorrelated with the DW test
+## our results are 1.9, which is close to the recommended 2 to ensure independence. 
+## Thus we have not failed this assumption.
+
+
+# Outliers.
+
+```{r}
+std_res <- rstandard(fit)
+points <- 1:length(std_res)
+
+ggplot(data = NULL, aes(x = points, y = std_res)) +
+  geom_point() +
+  ylim(c(-4,4)) +
+  geom_hline(yintercept = c(-3, 3), colour = "red", linetype = "dashed")
+
+res_labels <- if_else(abs(std_res) >= 2.5, paste(points), "")
+ggplot(data = NULL, aes(x = points, y = std_res, label = res_labels)) +
+  geom_point() +
+  geom_text(nudge_x = 2) +
+  ylim(c(-4,4)) +
+  geom_hline(yintercept = c(-3, 3), colour = "red", linetype = "dashed")
+
+```
+
+
+##there are outliers at point 3 and above
+
+
+
+
+
+##Leverage points.
+##Determine if there are any high leverage points that have the potential to influence the model.
+
+
+
+```{r}
+hats <- hatvalues(fit)
+ggplot(data = NULL, aes(x = points, y = hats)) +
+  geom_point()
+
+hat_labels <- if_else(hats >= 0.15, paste(points), "")
+ggplot(data = NULL, aes(x = points, y = hats)) +
+  geom_point() +
+  geom_text(aes(label = hat_labels), nudge_y = 0.005)
+```
+## there are no hatvalues greater than 1, however we might investigate the points above 0.1 as they seem to stick out above the rest
+
+##nfluential points.
+##Determine if any of the points could be considered as points of high influence.
+
+
+```{r}
+cook <- cooks.distance(fit)
+ggplot(data = NULL, aes(x = points, y = cook)) +
+  geom_point()
+
+```
+
+## we might take a look at those points above 0.1 that are standing out above the rest
+
+```{r}
+cook_labels <- if_else(cook >= 0.075, paste(points), "")
+
+ggplot(data = NULL, aes(x = points, y = cook)) +
+  geom_point() +
+  geom_text(aes(label = cook_labels), nudge_x = 2)
+```
+
+
+
+
+
+##Homoscedasticity.
+##Check your model for any evidence of heteroscedasticity.
+
+# #we can test for heteroscedasticity by plotting the residuals against 
+# #the fitted values
+```{r}
+res <- residuals(fit)
+fitted <- predict(fit)  # or can use fitted()
+ggplot(data = NULL, aes(x = fitted, y = res)) +
+  geom_point(colour = "dodgerblue") + 
+  geom_hline(yintercept = 0, colour = "red", linetype = "dashed")
+```
+
+
+## there does not appear to be evidence of heteroscedasticity 
+
+
+
+##Normality.
+##Are the residuals of your model normally distributed?
+```{r}
+ggplot(data = NULL, aes(x = res)) +
+  geom_histogram(colour = "black", fill = "dodgerblue", binwidth = 0.7)
+
+```
+
+## Histogram looks fairly normal and jus a bit skewed to the right.
+
+
+```{r}
+ggplot(data = NULL, aes(sample = res)) +
+  stat_qq() + stat_qq_line()
+
+```
+##Multicollinearity
+##Investigate whether there is evidence of multicollinearity among our explanatory variables
+```{r}
+car::vif(fit)
+
+```
+
+##there can be seen some multicollinearity as the values are greater than 1
+
+##Linearity
+##Investigate the assumption of linearity.
+```{r}
+car::avPlots(fit)
+```
+##Some points are tending to create non-linear patterns in the data, they seem to be similar to the points that may have been points of high influence.
+## We could try transforming our data or investigate the use of a different model that is more robust to our data
+
+##5. Player recommendations
+##choosing player for position c
+```{r}
+fit2 <- new_df %>% 
+  filter(Pos == 'C' ) %>% 
+  lm(play_eff ~ TRB + AST + PF+ BLK + STL, data = .)
+tidy(fit2, conf.int = TRUE)
+summary(fit2)
+
+new_df %>% 
+  filter(Pos == "C",BLK > mean(BLK),PTS > mean(PTS),
+         TRB >mean(TRB),sal_mil< mean(sal_mil)) %>% 
+mutate(ef_player = predict(fit2, newdata = .)) %>%
+  ggplot(aes(ef_player, PTS, label = player_name)) + 
+  geom_point() +
+  geom_text(nudge_x=0.1, cex = 2) + 
+  geom_abline()
+c <- new_df %>% filter(Pos == "C",BLK > mean(BLK),PTS > mean(PTS),
+                       TRB >mean(TRB),sal_mil< mean(sal_mil))  %>% top_n(10)
+
+```
+## player recommendations for this position is karl anthony towns where he has the highest efficiency and also available at 7.84 million
+
+
+##choosing player for position pf
+```{r}
+new_df %>% 
+  filter(Pos == "PF",G > mean(G),PTS > mean(PTS), play_eff>mean(play_eff)) %>% 
+mutate(ef_player = predict(fit2, newdata = .)) %>%
+  ggplot(aes(ef_player, PTS, label = player_name)) + 
+  geom_point() +
+  geom_text(nudge_x=0.1, cex = 2) + 
+  geom_abline()
+pf <- new_df %>% filter(Pos == "PF",G > mean(G),PTS > mean(PTS), play_eff>mean(play_eff)) %>%top_n(10)
+
+```
+
+##player recommendations for this position is Julius Randle where he has good efficiency and available at 8.64 million and is in the top 3 among the recommended players
+
+
+
+##choosing player for position pg
+
+```{r}
+new_df %>% 
+  filter(Pos == "PG",G > mean(G),PTS > mean(PTS), play_eff>mean(play_eff)) %>% 
+mutate(ef_player = predict(fit2, newdata = .)) %>%
+  ggplot(aes(ef_player, PTS, label = player_name)) + 
+  geom_point() +
+  geom_text(nudge_x=0.1, cex = 2) + 
+  geom_abline()
+pg <- new_df %>% filter(Pos == "PG",G > mean(G),PTS > mean(PTS), play_eff>mean(play_eff)) %>%top_n(10)
+
+
+```
+
+##player recommendations for this position is james harden where he has the highest efficiency and  available at 30.57  million
+
+##choosing player for position sf
+
+```{r}
+
+new_df %>% 
+  filter(Pos == "SF",G > mean(G),PTS > mean(PTS), play_eff>mean(play_eff)) %>% 
+mutate(ef_player = predict(fit2, newdata = .)) %>%
+  ggplot(aes(ef_player, PTS, label = player_name)) + 
+  geom_point() +
+  geom_text(nudge_x=0.1, cex = 2) + 
+  geom_abline()
+pg <- new_df %>% filter(Pos == "SF",G > mean(G),PTS > mean(PTS), play_eff>mean(play_eff)) %>%top_n(10)
+```
+
+
+##player recommendations for this position is Kevin Durant where he has the highest efficiency and  available at 30 million
+
+	
+
+
+
+##choosing player for position sg
+
+```{r}
+new_df %>% 
+  filter(Pos == "SG",G > mean(G),PTS > mean(PTS), play_eff>mean(play_eff)) %>% 
+mutate(ef_player = predict(fit2, newdata = .)) %>%
+  ggplot(aes(ef_player, PTS, label = player_name)) + 
+  geom_point() +
+  geom_text(nudge_x=0.1, cex = 2) + 
+  geom_abline()
+pg <- new_df %>% filter(Pos == "SG",G > mean(G),PTS > mean(PTS), play_eff>mean(play_eff)) %>%top_n(10)
+```
+
+##player recommendations for this position is Klay Thompson where he has the highest efficiency and  available at 18.99 million
+
+
+
+## 6. Summary
+In gist we can conclude that most of the highly efficient players are highly expenisve and not all the costly players are chosen as there is a restraint not to use up all the money for the players itself. All differnt factors are considered and the analysis is done
+
+
+
+
+## 7.references
+
+ 1. Analyzing NBA Player Data I: Getting Data | R-bloggers [Internet]. R-bloggers. 2021 [cited 9 May 2021]. Available from: https://www.r-bloggers.com/2018/03/analyzing-nba-player-data-i-getting-data/
+
+ 2. &#8594; H, &#8594; B, &#8594; C, (explained) B. Basketball Positions: Key Roles and Responsibilities (explained) [Internet]. Basketball For Coaches. 2021 [cited 9 May 2021]. Available from: https://www.basketballforcoaches.com/basketball-positions/
+
+3. Irizarry R. Chapter 8 Visualizing data distributions | Introduction to Data Science [Internet]. Rafalab.github.io. 2021 [cited 9 May 2021]. Available from: https://rafalab.github.io/dsbook/distributions.html
+
+4. Yesilyurt E. Determining the Players’ Efficiency in NBA: Some Economic and Managerial Results. International Journal of Sport Management, Recreation and Tourism. 2014;13:1-19.
+ 5. Fein Z. Cracking the Code: How to Calculate Hollinger's PER Without All the Mess [Internet]. Bleacher Report. 2021 [cited 9 May 2021]. Available from: https://bleacherreport.com/articles/113144-cracking-the-code-how-to-calculate-hollingers-per-without-all-the-mess
+
+6. Basketball statistics - Wikipedia [Internet]. En.wikipedia.org. 2021 [cited 9 May 2021]. Available from: https://en.wikipedia.org/wiki/Basketball_statistics
+
+
